@@ -1,0 +1,13 @@
+fn fold<I, A, F>(iter: I, acc: A, func: F) -> A 
+where
+    I: Iterator,
+    F: Fn<(A, I::Item), A>
+{
+    match iter.next() {
+        Some((iter_next, item)) {
+            let acc_next = func(acc, item);
+            fold(iter_next, acc_next, func)
+        }
+        None => A,
+    }
+}

@@ -4,11 +4,60 @@ use nom::{
     branch::alt,
     bytes::complete::{is_not, tag, take_while_m_n},
     character::complete::{alpha1, alphanumeric1, char, multispace1},
-    combinator::{cut, map_res, recognize, value},
-    multi::{fold, many0_count, many1},
+    combinator::{cut, map_res, not, recognize, value},
+    multi::{fold, fold_many0, many0_count, many1_count},
     sequence::{delimited, pair, preceded},
 };
 
+#[derive(Debug)]
+pub struct TokenStream {
+    toks: Vec<Token>,
+}
+
+pub fn parse_token_stream(input: &str) -> IResult<&str, TokenStream> {
+    fold_many0(
+        alt((
+            parse_comment_or_whitespace.map(|_| None),
+            parse_token.map(Some),
+        )),
+        || TokenStream { toks: Vec::new() },
+        |mut acc: TokenStream, e| {
+            if let Some(e) = e {
+                acc.toks.push(e);
+            }
+            acc
+        },
+    )
+    .parse(input)
+}
+
+#[derive(Debug)]
+enum Token {
+    Keyword(Keyword),
+    Symbol(Symbol),
+    Ident(Ident),
+    StringLiteral(StringLiteral),
+}
+
+fn parse_token(input: &str) -> IResult<&str, Token> {
+    alt((
+        parse_keyword.map(Token::Keyword),
+        parse_symbol.map(Token::Symbol),
+        parse_ident.map(Token::Ident),
+        parse_string_literal.map(Token::StringLiteral),
+    ))
+    .parse(input)
+}
+
+fn parse_comment<'t>(input: &'t str) -> IResult<&'t str, &'t str> {
+    recognize(pair(tag("//"), many0_count(not(tag("\n"))))).parse(input)
+}
+
+fn parse_comment_or_whitespace<'t>(input: &'t str) -> IResult<&'t str, &'t str> {
+    recognize(many1_count(alt((parse_comment, multispace1)))).parse(input)
+}
+
+#[derive(Debug)]
 struct Ident(String);
 
 fn recognize_ident<'t>(input: &'t str) -> IResult<&'t str, &'t str> {
@@ -23,6 +72,7 @@ fn parse_ident<'t>(input: &'t str) -> IResult<&'t str, Ident> {
     recognize_ident.map(Into::into).map(Ident).parse(input)
 }
 
+#[derive(Debug)]
 struct StringLiteral(Vec<u8>);
 
 fn parse_string_literal(s: &str) -> IResult<&str, StringLiteral> {
@@ -40,7 +90,7 @@ fn parse_string_literal(s: &str) -> IResult<&str, StringLiteral> {
         .parse(s)
 }
 
-#[derive(From)]
+#[derive(From, Debug)]
 enum StringFragment<'t> {
     Str(&'t str),
     Byte(u8),
@@ -53,7 +103,9 @@ fn parse_fragment<'t>(s: &'t str) -> IResult<&'t str, StringFragment<'t>> {
 
 fn parse_nonescape<'t>(s: &'t str) -> IResult<&'t str, StringFragment<'t>> {
     let not_quote_slash = is_not("\"\\");
-    recognize(many1(not_quote_slash)).map(Into::into).parse(s)
+    recognize(many1_count(not_quote_slash))
+        .map(Into::into)
+        .parse(s)
 }
 
 fn parse_escape<'t>(s: &'t str) -> IResult<&'t str, StringFragment<'t>> {
@@ -106,7 +158,7 @@ fn parse_unicode_escape<'t>(s: &'t str) -> IResult<&'t str, StringFragment<'t>> 
         .parse(s)
 }
 
-#[derive(FromStr)]
+#[derive(FromStr, Debug)]
 #[from_str(rename_all = "lowercase")]
 enum Keyword {
     Else,
@@ -129,7 +181,7 @@ fn parse_keyword(input: &str) -> IResult<&str, Keyword> {
     recognize_ident.map_res(|i| i.parse()).parse(input)
 }
 
-#[derive(FromStr)]
+#[derive(FromStr, Debug)]
 enum Symbol {
     // =
     Assign,
