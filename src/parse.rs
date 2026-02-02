@@ -4,7 +4,7 @@ use nom::{
     branch::alt,
     bytes::complete::{is_not, tag, take_while_m_n},
     character::complete::{alpha1, alphanumeric1, char, multispace1},
-    combinator::{cut, map_res, not, recognize, value},
+    combinator::{cut, not, recognize, value},
     multi::{fold, fold_many0, many0_count, many1_count},
     sequence::{delimited, pair, preceded},
 };
@@ -131,7 +131,6 @@ fn parse_char_escape<'t>(s: &'t str) -> IResult<&'t str, StringFragment<'t>> {
         value(b'\r', char('r')),
         value(b'\t', char('t')),
         value(b'\\', char('\\')),
-        value(b'\\', char('\\')),
         value(b'\0', char('0')),
         value(b'"', char('"')),
     ))
@@ -151,7 +150,7 @@ fn parse_byte_escape<'t>(s: &'t str) -> IResult<&'t str, StringFragment<'t>> {
 fn parse_unicode_escape<'t>(s: &'t str) -> IResult<&'t str, StringFragment<'t>> {
     let parse_hex = take_while_m_n(1, 6, |c: char| c.is_ascii_hexdigit());
     let parse_delimited_hex = preceded(char('u'), delimited(char('{'), parse_hex, char('}')));
-    let parse_u32 = map_res(parse_delimited_hex, move |hex| u32::from_str_radix(hex, 16));
+    let parse_u32 = parse_delimited_hex.map_res(move |hex| u32::from_str_radix(hex, 16));
     parse_u32
         .map_opt(std::char::from_u32)
         .map(Into::into)
