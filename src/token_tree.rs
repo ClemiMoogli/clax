@@ -1,3 +1,5 @@
+use nom::{IResult}
+
 struct Where {}
 
 struct Generics {}
@@ -5,41 +7,68 @@ struct Generics {}
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 struct IdentDecl(String);
 
-struct IdentPath{
+struct IdentPath {
     last: String,
     path: Vec<String>,
 }
 
+struct Arg {
+    ident: IdentDecl,
+    return_type: Type,
+}
+
 // function
-//
+struct Function {
+    ident: IdentDecl,
+    generics: Generics,
+    args: vec![Arg],
+    return_type: Type,
+    where_clause: Where,
+    body: StructBody,
+}
+
 // let
-//
-// struct 
+struct Let {
+    ident: IdentDecl,
+    return_type: Type,
+    valeur: StructBody,
+}
+
+// struct
 struct Struct {
     generics: Generics,
     ident: IdentDecl,
     where_clause: Where,
-    
 }
 
 enum StructBody {
-    Struct{
-
-    },
+    Struct {},
     Tuple,
     Unit,
 }
 
-// enum 
-//
+// enum
+struct Enum {
+    ident: IdentDecl,
+    values: vec![String],
+}
+
 // type
+enum Type {
+    i32,
+    String,
+}
+
+// trait
 //
-// trait  
+// use
 //
-// use  
-//
-// splat 
+// splat
 //
 // mod
 //
-// impl 
+// impl
+
+fn parse_function(stream: TokenStream) -> Function {
+
+}
